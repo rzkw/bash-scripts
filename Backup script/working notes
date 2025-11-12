@@ -1,0 +1,7 @@
+https://claude.ai/share/3b59e85c-8ded-409e-bada-c91a58a27c37
+
+- fix awk grabbing both header and data line
+- fix: disk space check should come after mount check
+- backup dirs treated as one string
+
+delete after final draft complete
