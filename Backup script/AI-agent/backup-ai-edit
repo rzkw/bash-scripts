@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# backup-ai-edit
+# A safe, commented variant of the original `backup-rsync.sh`.
+# This file implements only the high-priority fixes requested and
+# intentionally preserves the original rsync flags, excludes and
+# log filename format. It does NOT modify `backup-rsync.sh`.
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ------------------------------------------------------------------
+# Why these upfront settings?
+# - `set -euo pipefail` makes the script fail fast on errors, undefined
+#   variables, and failing commands in pipelines. This prevents silent
+#   continuation after errors (important for backups).
+# - `IFS` is tightened to newline+tab to avoid word-splitting surprises.
+# ------------------------------------------------------------------
+
+# Require root: the original script reads /root, writes to /var/log
+# and expects to be able to access system directories. Fail early if
+# not running with sufficient privileges.
+if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+  echo "This script must be run as root" >&2
+  exit 1
+fi
+
+# Date/time used to preserve original log filename convention:
+date=$(date +%d-%m-%Y)
+time=$(date +%H-%M-%S)
+
+# High-priority fix: use a bash array for source directories so each
+# path is passed as a separate argument to rsync. The original used a
+# single quoted string which expands to one argument (bug).
+backup_dirs=(/home /var/log /etc /root /opt)
+
+# Destination is kept identical to the original script to preserve
+# behaviour. We quote it carefully when used.
+dest="/backup"
+
+# Preserve the original log filename format (time-date) but use a
+# variable for consistent quoting throughout the script.
+logfile="/var/log/backup-log_${time}-${date}.txt"
+
+# Check destination is mounted (preserve original intent) - quoted
+if mountpoint -q "$dest"; then
+
+  # Retrieve available space in 1K-blocks (same method as original)
+  available_space=$(df "$dest" | awk 'NR == 2{print $4}')
+
+  # Validate the value we received from df before numeric compare ---
+  # if df returns an unexpected value (empty or non-numeric) abort
+  # rather than letting `-lt` fail with an error.
+  if ! [[ "$available_space" =~ ^[0-9]+$ ]]; then
+    echo "Failed to determine available space on $dest. Backup aborted." >&2
+    exit 2
+  fi
+
+  # Minimum-space threshold is intentionally identical to original
+  # script: 10485760 (1K-block units from df) == ~10 GiB
+  if [ "$available_space" -lt 10485760 ]; then
+    echo "Not enough disk space available on $dest. Backup aborted." >&2
+    exit 1
+  else
+
+    # Informational message (same general output as original)
+    echo "Backing up ${backup_dirs[*]} to $dest using rsync"
+
+    # Run rsync using the original flags/excludes but with the
+    # corrected source expansion and quoted logfile path.
+    # We use the `if rsync ...; then` form to capture the exit
+    # status immediately and act on it. This is more robust than
+    # checking `$?` later.
+    if rsync -auv --exclude={/dev/*,/proc/*,/sys/*,/tmp/*,/run/*,/mnt/*,/media/*,/cdrom/*,/lost+found} "${backup_dirs[@]}" "$dest" | tee "$logfile"; then
+      echo "Backup complete $time $date"
+    else
+      echo "Backup error $time $date" >&2
+      exit 1
+    fi
+  fi
+
+else
+  # Destination not mounted -> fail (preserve original behaviour)
+  echo "$dest is not mounted. Backup failed." >&2
+  exit 1
+fi
+
+# End of `backup-ai-edit`
