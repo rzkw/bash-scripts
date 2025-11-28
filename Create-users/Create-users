@@ -1,0 +1,6 @@
+#!/bin/bash
+
+while IFS=":" read user uid groups; do
+	echo "Creating user $user with UID $uid belonging to groups $groups";
+	useradd -G $groups -u $uid $user;
+done < users.txt

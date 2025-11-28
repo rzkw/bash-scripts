@@ -1,0 +1,3 @@
+hpc_admin:9090
+hpc_managers:8080
+sysadmin:7070

@@ -1,0 +1,12 @@
+#!/bin/bash
+#Script to check career
+
+if [ "$1" == "me" ]; then
+	echo "Yes, I'm a Systems Engineer.";
+elif [ "$1" == "they" ]; then
+	echo "Okay, they do cloud engineering."
+elif [ -z "$1" ]; then 
+	echo "Please provide an argument e.g ./career.sh me|they"
+else
+	echo "Usage: ./career.sh me|they"
+fi

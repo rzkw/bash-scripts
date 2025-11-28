@@ -1,0 +1,3 @@
+maryam:2030:hpc_admin,hpc_managers
+adam:2040:sysadmin
+jacob:2050:hpc_admin
